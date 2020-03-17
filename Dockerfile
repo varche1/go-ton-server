@@ -1,29 +1,38 @@
-FROM docker.cryptology.com/base/ci-image:latest as builder
+FROM debian:testing as builder
 
-RUN go get github.com/ahmetb/govvv
 
 ENV GO111MODULE=on
-ENV CGO_ENABLED=0
+ENV CGO_ENABLED=1
 ENV GOFLAGS="-mod=vendor"
 WORKDIR /app
 
+RUN apt update
+RUN apt install -y golang openssl libssl-dev
+
 COPY . .
 
-RUN go build
+COPY ./vendor/github.com/mercuryoio/tonlib-go/v2/lib/linux/* ./linux/
 
-FROM alpine:3.10.1
+RUN ls .
 
-RUN apk update && apk upgrade 
-RUN apk add --update \
-    curl \
-    libc6-compat \
-    && rm -rf /var/cache/apk/*
 
-RUN addgroup -g 10001 app && \
-    adduser -D -G app -h /app -u 10001 app
-RUN apk --no-cache add ca-certificates && update-ca-certificates
+RUN LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./linux go build
+
+FROM debian:testing as worker
+
+RUN apt update -y
+RUN apt install -y openssl libssl-dev curl ca-certificates
+RUN addgroup --gid 10001 app && \
+    adduser --disabled-password --gid 10001 --home /app --uid 10001 app
+
 USER app
 # path of application code at builder container and at this container must be the same for proper showing stacktrace at sentry
 WORKDIR /app
+
+COPY --from=builder /app/go-ton-server ./
+COPY --from=builder /app/linux/* ./linux/
+COPY tonlib.config.json ./
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./linux
 EXPOSE 8000
-ENTRYPOINT ["go-ton-server"]
+
+ENTRYPOINT ["/app/go-ton-server"]
