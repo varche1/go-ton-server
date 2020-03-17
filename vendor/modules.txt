@@ -1,0 +1,5 @@
+# github.com/mercuryoio/tonlib-go/v2 v2.1.0
+github.com/mercuryoio/tonlib-go/v2
+github.com/mercuryoio/tonlib-go/v2/lib
+github.com/mercuryoio/tonlib-go/v2/lib/darwin
+github.com/mercuryoio/tonlib-go/v2/lib/linux
